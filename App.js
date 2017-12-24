@@ -9,9 +9,19 @@ import {
   TextInput
 } from 'react-native';
 
-import BackgroundWorker from './background-worker';
+import AlarmCreator from './alarm-creator';
+import DailyBackgroundJob from './daily-background-job';
 import CalendarMultiSelect from './calendar-multi-select';
 import Preferences from './preferences';
+
+
+const JOB_SCHEDULED_HOUR = 2;
+const JOB_SCHEDULED_MINUTE = 0;
+
+const ALARM_CREATOR = new AlarmCreator();
+const DAILY_BG_JOB_KEY = "ALARM_CREATOR_JOB";
+const DAILY_BG_JOB = new DailyBackgroundJob(DAILY_BG_JOB_KEY);
+DAILY_BG_JOB.register(ALARM_CREATOR.checkCalendarAndCreateAlarm);
 
 
 export default class App extends Component<{}> {
@@ -29,8 +39,12 @@ export default class App extends Component<{}> {
       });
   }
 
-  componentDidMount() {
-    BackgroundWorker.updateJob(true);
+  _updateBackgroundJobSchedule() {
+    DAILY_BG_JOB.schedule({
+      enabled: this.state.enabled,
+      scheduledHour: JOB_SCHEDULED_HOUR,
+      scheduledMinute: JOB_SCHEDULED_MINUTE,
+    });
   }
 
   _onSavePress() {
@@ -41,10 +55,13 @@ export default class App extends Component<{}> {
     }
     console.log(`Saving config: ${JSON.stringify(this.state)}`);
     Preferences.save('config', this.state);
+    this._updateBackgroundJobSchedule();
   }
 
   _onRunBackgroundPress() {
-    new BackgroundAlarmCreatorJob().tryRun();
+    DAILY_BG_JOB.runIfScheduled(() => {
+      new AlarmCreator().checkCalendarAndCreateAlarm();
+    });
   }
 
   _onClearPreferencesPress() {

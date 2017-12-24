@@ -1,10 +1,8 @@
 import {NativeModules} from 'react-native';
-
-import Preferences from './preferences';
 import RNCalendarEvents from 'react-native-calendar-events';
 
-const ALARM_SET_TIME_HOURS = 2;
-const ALARM_SET_TIME_MINUTES = 0;
+import Preferences from './preferences';
+import { todayMidnightRelativeTime } from './util';
 
 const EARLIEST_EVENT_START_HOURS = 4;
 const EARLIEST_EVENT_START_MINUTES = 0;
@@ -12,20 +10,9 @@ const EARLIEST_EVENT_START_MINUTES = 0;
 const LATEST_EVENT_START_HOURS = 9;
 const LATEST_EVENT_START_MINUTES = 30;
 
-function todayMidnightRelativeTime(hours, minutes) {
-  let d = new Date();
-  d.setHours(hours);
-  d.setMinutes(minutes);
-  d.setSeconds(0);
-  d.setMilliseconds(0);
-  return d;
-}
 
-export default class BackgroundAlarmCreatorJob {
+export default class AlarmCreator {
   constructor() {
-    this._started = false;
-    this.alarmSetTime = todayMidnightRelativeTime(
-        ALARM_SET_TIME_HOURS, ALARM_SET_TIME_MINUTES);
     this.earliestEventStart = todayMidnightRelativeTime(
         EARLIEST_EVENT_START_HOURS, EARLIEST_EVENT_START_MINUTES);
     this.latestEventStart = todayMidnightRelativeTime(
@@ -48,26 +35,6 @@ export default class BackgroundAlarmCreatorJob {
                                                tomorrowMidnight,
                                                calendarIds);
       });
-  }
-
-  _shouldRun(config, lastRunDate) {
-    // Return true if enabled by config and if in the right time window.
-    // (last run before 02:00 ALARM_SET_TIME_*, current time after)
-    if (!config.enabled) {
-      return [false, 'Skipping run: config not enabled'];
-    }
-
-    const now = new Date();
-    const shouldRun = (lastRunDate < this.alarmSetTime && now >= this.alarmSetTime);
-    if (!shouldRun) {
-      const msg = `Skipping run: time criterion not satisfied: ` +
-                  `lastRunDate: ${lastRunDate}, ` +
-                  `alarmSetTime: ${this.alarmSetTime}, ` +
-                  `now: ${now}`;
-      return [false, msg];
-    }
-
-    return [true, 'Run allowed'];
   }
 
   _filterRelevantEvents(events) {
@@ -120,7 +87,7 @@ export default class BackgroundAlarmCreatorJob {
     console.log(`${message}\n  ${eventStrings.join('\n  ')}`);
   }
 
-  _executeRun(config) {
+  _checkCalendarAndCreateAlarm(config) {
     this._fetchCalendarEvents(config)
       .then(events => {
         events = this._convertEventDates(events);
@@ -134,44 +101,20 @@ export default class BackgroundAlarmCreatorJob {
         }
 
         const firstEvent = this._findFirstEvent(events);
-        this._createAlarm(firstEvent, config.preAlarmMinutes);
-
-        Preferences.save('lastRun', new Date().toISOString());
+        this._createAlarm(firstEvent, Number.parseInt(config.preAlarmMinutes));
       })
       .catch(error => {
         throw `Failed to fetch calendar events: ${error}`;
       });
   }
 
-  _loadPreferences() {
-    pConfig = Preferences.load('config');
-    pLastRun = Preferences.load('lastRun')
-      .then(dateStr => new Date(dateStr))
+  checkCalendarAndCreateAlarm() {
+    Preferences.load('config')
       .catch(error => {
-        return todayMidnightRelativeTime(-24, 0);  // yesterday midnight
-      });
-
-    return Promise.all([pConfig, pLastRun]);
-  }
-
-  tryRun() {
-    if (this._started) {
-      throw "BackgroundAlarmCreatorJob may only be started once";
-    }
-    this._started = true;
-
-    this._loadPreferences()
-      .catch(error => {
-        throw `Failed config load for scheduling alarms: ${error}`;
+        throw `Failed config load for alarm creation: ${error}`;
       })
-      .then(values => {
-        const [config, lastRun] = values;
-        const [shouldRun, message] = this._shouldRun(config, lastRun)
-        if (shouldRun) {
-          this._executeRun(config);
-        } else {
-          console.log(message);
-        }
+      .then(config => {
+        this._checkCalendarAndCreateAlarm(config);
       })
       .catch(error => {
         console.error(`Failed update run: ${error}`);
