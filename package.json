@@ -13,7 +13,8 @@
     "react-native-background-job": "^2.0.1",
     "react-native-calendar-events": "^1.4.3",
     "react-native-intent-launcher": "^0.1.0",
-    "react-native-select-multiple": "^1.2.0"
+    "react-native-select-multiple": "^1.2.0",
+    "react-native-shared-preferences": "^1.0.0"
   },
   "devDependencies": {
     "babel-jest": "21.2.0",

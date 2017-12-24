@@ -4,39 +4,122 @@ import {
   Text,
   View,
   Button,
-  Alert
+  Alert,
+  Switch,
+  TextInput
 } from 'react-native';
 
-import {NativeModules} from 'react-native';
-
+import BackgroundWorker from './background-worker';
 import CalendarMultiSelect from './calendar-multi-select';
+import Preferences from './preferences';
+
 
 export default class App extends Component<{}> {
   constructor(props) {
     super(props);
     this.state = {
-      error: null,
-      calendars: null,
-      selected: []
+      enabled: true,
+      preAlarmMinutes: '45',
+      selectedCalendars: [],
     };
+    Preferences.load('config')
+      .then((data) => { this.setState(data); })
+      .catch((error) => {
+        console.warn('Failed to load config: ' + error);
+      });
   }
 
-  _onSetAlarmPress() {
-    NativeModules.AlarmClock.schedule('Awesome', 8, 32);
+  componentDidMount() {
+    BackgroundWorker.updateJob(true);
+  }
+
+  _onSavePress() {
+    const [valid, message] = this._validateStateOk();
+    if (!valid) {
+      Alert.alert("Calendar Alarm", message);
+      return;
+    }
+    console.log(`Saving config: ${JSON.stringify(this.state)}`);
+    Preferences.save('config', this.state);
+  }
+
+  _onRunBackgroundPress() {
+    new BackgroundAlarmCreatorJob().tryRun();
+  }
+
+  _onClearPreferencesPress() {
+    Preferences.clear();
+  }
+
+  _onPreAlarmChanged(text) {
+    const filteredText = text.replace(/[^0-9]/g, '');
+    this.setState({preAlarmMinutes: filteredText});
+  }
+
+  _validateStateOk() {
+    if (!this.state.enabled) {
+      // No need to validate the other fields if the alarms are disabled.
+      return [true, ""];
+    }
+    if (this.state.preAlarmMinutes.length == 0) {
+      return [false, "Please enter an alarm time."];
+    }
+    if (this.state.preAlarmMinutes.search(/[^0-9]/) != -1) {
+      return [false, "Please enter a valid alarm time."];
+    }
+    if (this.state.selectedCalendars.length == 0) {
+      return [false, "Please select at least one calendar"];
+    }
+    return [true, ''];
   }
 
   render() {
     return (
       <View style={styles.container}>
         <Text style={styles.welcome}>
-          Welcome to Calendar Alarm!
+          Setup Calendar Alarm
         </Text>
-        <CalendarMultiSelect />
-        <Button
-          onPress={this._onSetAlarmPress}
-          title="Set Alarm"
-          accessibilityLabel="Set a new Android alarm."
+        <View style={styles.settingsItem}>
+          <Text style={styles.heading}>
+            Calendar Alarm enabled
+          </Text>
+          <Switch
+            onValueChange={value => this.setState({enabled: value})}
+            value={this.state.enabled}
+          />
+        </View>
+        <Text style={styles.heading}>
+          Set alarm X minutes before first appointment
+        </Text>
+        <TextInput
+          style={styles.textinput}
+          placeholder="Enter pre-alarm duration (min)"
+          keyboardType = 'numeric'
+          onChangeText = {text => this._onPreAlarmChanged(text)}
+          value={this.state.preAlarmMinutes}
         />
+        <Text style={styles.heading}>
+          Activated calendars
+        </Text>
+        <CalendarMultiSelect
+          selected={this.state.selectedCalendars}
+          onSelectionChange={sel => this.setState({selectedCalendars: sel})}
+        />
+        <Button
+          title="Save"
+          accessibilityLabel="Save settings and enable/disable the alarms"
+          onPress={() => this._onSavePress()}
+        />
+        <View style={styles.debugcontainer}>
+          <Button
+            title="Run bg job"
+            onPress={() => this._onRunBackgroundPress()}
+          />
+          <Button
+            title="Clear prefs"
+            onPress={() => this._onClearPreferencesPress()}
+          />
+        </View>
       </View>
     );
   }
@@ -45,23 +128,38 @@ export default class App extends Component<{}> {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'flex-start',
+    alignItems: 'stretch',
     backgroundColor: '#F5FCFF',
+    padding: 10,
+  },
+  debugcontainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'stretch',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   welcome: {
     fontSize: 20,
     textAlign: 'center',
     margin: 10,
   },
-  error: {
-    fontSize: 20,
-    textAlign: 'center',
-    margin: 10,
-  },
-  calendarlist: {
-    textAlign: 'center',
-    color: '#333333',
+  heading: {
+    textAlign: 'left',
+    fontSize: 15,
+    fontWeight: 'bold',
+    marginTop: 10,
     marginBottom: 5,
+  },
+  settingsItem: {
+    flexDirection: 'row',
+    alignSelf: 'stretch',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F5FCFF',
+  },
+  textinput: {
+    height: 40,
   },
 });

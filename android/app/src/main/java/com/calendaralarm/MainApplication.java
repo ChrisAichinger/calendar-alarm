@@ -2,6 +2,7 @@ package com.calendaralarm;
 
 import android.app.Application;
 import com.facebook.react.ReactApplication;
+import in.sriraman.sharedpreferences.RNSharedPreferencesReactPackage;
 import com.pilloxa.backgroundjob.BackgroundJobPackage;
 import com.facebook.react.ReactNativeHost;
 import com.facebook.react.ReactPackage;
@@ -26,6 +27,7 @@ public class MainApplication extends Application implements ReactApplication {
     protected List<ReactPackage> getPackages() {
       return Arrays.<ReactPackage>asList(
           new MainReactPackage(),
+          new RNSharedPreferencesReactPackage(),
           new BackgroundJobPackage(),
           new IntentLauncherPackage(),
           new CalendarEventsPackage(),

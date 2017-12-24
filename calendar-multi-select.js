@@ -15,7 +15,6 @@ export default class CalendarMultiSelect extends Component<{}> {
     this.state = {
       error: null,
       calendars: null,
-      selected: []
     };
 
     RNCalendarEvents.authorizationStatus()
@@ -66,17 +65,21 @@ export default class CalendarMultiSelect extends Component<{}> {
       );
     }
 
-    const items = this.state.calendars.map((cal) => {
-      return {"value": cal.id, "label": `${cal.title} (${cal.source})`};
-    });
-    const onSelectionsChange = (selected) => {
-      this.setState({"selected": selected});
+    const inner2outer = (o => { return {"name": o.label, "id": o.value} });
+    const outer2inner = (o => { return {"label": o.name, "value": o.id} });
+    const cal2inner = (o => { return {"value": o.id,
+                                      "label": `${o.title} (${o.source})`} });
+
+    const onSelectionsChange = (sel) => {
+      if (this.props.onSelectionChange) {
+        this.props.onSelectionChange(sel.map(inner2outer));
+      }
     }
     return (
       <View style={styles.container}>
         <SelectMultiple
-          items={items}
-          selectedItems={this.state.selected}
+          items={this.state.calendars.map(cal2inner)}
+          selectedItems={this.props.selected.map(outer2inner)}
           onSelectionsChange={onSelectionsChange} />
       </View>
     );
@@ -85,19 +88,15 @@ export default class CalendarMultiSelect extends Component<{}> {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#F5FCFF',
+    minHeight: 150,
+    paddingBottom: 10,
   },
   error: {
     fontSize: 20,
     textAlign: 'center',
     margin: 10,
-  },
-  calendarlist: {
-    textAlign: 'center',
-    color: '#333333',
-    marginBottom: 5,
   },
 });
