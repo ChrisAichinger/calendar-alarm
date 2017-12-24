@@ -101,7 +101,7 @@ export default class AlarmCreator {
         }
 
         const firstEvent = this._findFirstEvent(events);
-        this._createAlarm(firstEvent, Number.parseInt(config.preAlarmMinutes));
+        this._createAlarm(firstEvent, config.preAlarmMinutes);
       })
       .catch(error => {
         throw `Failed to fetch calendar events: ${error}`;

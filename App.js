@@ -10,9 +10,10 @@ import {
 } from 'react-native';
 
 import AlarmCreator from './alarm-creator';
-import DailyBackgroundJob from './daily-background-job';
 import CalendarMultiSelect from './calendar-multi-select';
+import DailyBackgroundJob from './daily-background-job';
 import Preferences from './preferences';
+import { intToText } from './util';
 
 
 const JOB_SCHEDULED_HOUR = 2;
@@ -29,7 +30,7 @@ export default class App extends Component<{}> {
     super(props);
     this.state = {
       enabled: true,
-      preAlarmMinutes: '45',
+      preAlarmMinutes: 45,
       selectedCalendars: [],
     };
     Preferences.load('config')
@@ -69,8 +70,8 @@ export default class App extends Component<{}> {
   }
 
   _onPreAlarmChanged(text) {
-    const filteredText = text.replace(/[^0-9]/g, '');
-    this.setState({preAlarmMinutes: filteredText});
+    const filteredText = text.replace(/[^0-9]/g, '').substr(0, 5);
+    this.setState({preAlarmMinutes: Number.parseInt(filteredText)});
   }
 
   _validateStateOk() {
@@ -78,11 +79,8 @@ export default class App extends Component<{}> {
       // No need to validate the other fields if the alarms are disabled.
       return [true, ""];
     }
-    if (this.state.preAlarmMinutes.length == 0) {
+    if (!this.state.preAlarmMinutes) {
       return [false, "Please enter an alarm time."];
-    }
-    if (this.state.preAlarmMinutes.search(/[^0-9]/) != -1) {
-      return [false, "Please enter a valid alarm time."];
     }
     if (this.state.selectedCalendars.length == 0) {
       return [false, "Please select at least one calendar"];
@@ -113,7 +111,7 @@ export default class App extends Component<{}> {
           placeholder="Enter pre-alarm duration (min)"
           keyboardType = 'numeric'
           onChangeText = {text => this._onPreAlarmChanged(text)}
-          value={this.state.preAlarmMinutes}
+          value={intToText(this.state.preAlarmMinutes)}
         />
         <Text style={styles.heading}>
           Activated calendars
@@ -178,5 +176,6 @@ const styles = StyleSheet.create({
   },
   textinput: {
     height: 40,
+    textAlign: 'right',
   },
 });
