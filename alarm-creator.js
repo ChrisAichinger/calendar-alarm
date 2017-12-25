@@ -2,27 +2,25 @@ import {NativeModules} from 'react-native';
 import RNCalendarEvents from 'react-native-calendar-events';
 
 import Preferences from './preferences';
-import { todayMidnightRelativeTime } from './util';
-
-const EARLIEST_EVENT_START_HOURS = 4;
-const EARLIEST_EVENT_START_MINUTES = 0;
-
-const LATEST_EVENT_START_HOURS = 9;
-const LATEST_EVENT_START_MINUTES = 30;
+import { todayMidnightRelativeTime, TimeOfDay } from './util';
 
 
-export default class AlarmCreator {
-  constructor() {
-    this.earliestEventStart = todayMidnightRelativeTime(
-        EARLIEST_EVENT_START_HOURS, EARLIEST_EVENT_START_MINUTES);
-    this.latestEventStart = todayMidnightRelativeTime(
-        LATEST_EVENT_START_HOURS, LATEST_EVENT_START_MINUTES);
+export class AlarmCreator {
+  constructor(config) {
+    this.calendarIds = config.selectedCalendars.map(ev => ev.id);
+    this.preAlarmMinutes = config.preAlarmMinutes;
+
+    this.earliestEventStart = TimeOfDay
+      .fromTotalMinutes(config.earliestEventStartTODMinutes)
+      .toDate(new Date());
+    this.latestEventStart = TimeOfDay
+      .fromTotalMinutes(config.latestEventStartTODMinutes)
+      .toDate(new Date());
   }
 
-  _fetchCalendarEvents(config) {
+  _fetchCalendarEvents() {
     const todayMidnight = todayMidnightRelativeTime(0, 0);
     const tomorrowMidnight = todayMidnightRelativeTime(24, 0);
-    const calendarIds = config.selectedCalendars.map(ev => ev.id);
 
     return RNCalendarEvents.authorizationStatus()
       .then(status => {
@@ -33,7 +31,7 @@ export default class AlarmCreator {
       .then(() => {
         return RNCalendarEvents.fetchAllEvents(todayMidnight,
                                                tomorrowMidnight,
-                                               calendarIds);
+                                               this.calendarIds);
       });
   }
 
@@ -87,8 +85,8 @@ export default class AlarmCreator {
     console.log(`${message}\n  ${eventStrings.join('\n  ')}`);
   }
 
-  _checkCalendarAndCreateAlarm(config) {
-    this._fetchCalendarEvents(config)
+  checkCalendarAndCreateAlarm() {
+    this._fetchCalendarEvents()
       .then(events => {
         events = this._convertEventDates(events);
         this._logEvents("All events:", events);
@@ -101,24 +99,23 @@ export default class AlarmCreator {
         }
 
         const firstEvent = this._findFirstEvent(events);
-        this._createAlarm(firstEvent, config.preAlarmMinutes);
+        this._createAlarm(firstEvent, this.preAlarmMinutes);
       })
       .catch(error => {
         throw `Failed to fetch calendar events: ${error}`;
       });
   }
-
-  checkCalendarAndCreateAlarm() {
-    Preferences.load('config')
-      .catch(error => {
-        throw `Failed config load for alarm creation: ${error}`;
-      })
-      .then(config => {
-        this._checkCalendarAndCreateAlarm(config);
-      })
-      .catch(error => {
-        console.error(`Failed update run: ${error}`);
-      });
-  }
 }
 
+export default function checkCalendarAndCreateAlarm() {
+  Preferences.load('config')
+    .catch(error => {
+      throw `Failed config load for alarm creation: ${error}`;
+    })
+    .then(config => {
+      new AlarmCreator(config).checkCalendarAndCreateAlarm();
+    })
+    .catch(error => {
+      console.error(`Failed update run: ${error}`);
+    });
+}

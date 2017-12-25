@@ -19,10 +19,14 @@
   "devDependencies": {
     "babel-jest": "21.2.0",
     "babel-preset-react-native": "4.0.0",
+    "identity-obj-proxy": "^3.0.0",
     "jest": "21.2.1",
     "react-test-renderer": "16.0.0"
   },
   "jest": {
-    "preset": "react-native"
+    "preset": "react-native",
+    "moduleNameMapper": {
+      ".+\\.(png|jpg|ttf|woff|woff2)$": "identity-obj-proxy"
+    }
   }
 }

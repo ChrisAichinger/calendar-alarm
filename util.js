@@ -10,3 +10,73 @@ export function intToText(number) {
   }
   return number.toString();
 }
+
+/** Represents a time of day with minute precision
+ *
+ * Multiple constructors are supported:
+ *
+ *     new TimeOfDay("13:45")
+ *     new TimeOfDay(13, 45)
+ *     new TimeOfDay({hour: 13, minute: 45})
+ *
+ * Valid value range is from 00:00 to 23:59, and is enforced.
+ */
+export class TimeOfDay {
+  constructor(arg1, arg2) {
+    if (typeof arg1 == 'object' && arg2 === undefined) {
+      this._initialize(arg1.hour, arg1.minute);
+    }
+    else if (typeof arg1 == 'number' && typeof arg2 == 'number') {
+      this._initialize(arg1, arg2);
+    }
+    else {
+      throw `Invalid arguments for TimeOfDay constructor: ${arg1}, ${arg2}`;
+    }
+  }
+
+  /** Convert to total number of minutes since midnight */
+  toTotalMinutes() {
+    return this._minutes;
+  }
+
+  /** Convert to a {hour: h, minute: m} object */
+  toObject() {
+    return { hour: Math.floor(this._minutes/60), minute: this._minutes%60 };
+  }
+
+  /** Convert to localized time string */
+  toLocaleTimeString(locales, options) {
+    return this.toDate(new Date()).toLocaleTimeString(locales, options);
+  }
+
+  /** Convert to a Date object by combining with the date part of day */
+  toDate(day) {
+    let date = new Date(day);
+    date.setHours(Math.floor(this._minutes/60), this._minutes%60, 0, 0);
+    return date;
+  }
+
+  /** Create from total number of minutes since midnight */
+  static fromTotalMinutes(minutes) {
+    let tod = new TimeOfDay(0, 0);
+    tod._initialize(0, minutes);
+    return tod;
+  }
+
+  /** Create from time string "HH:MM" (12-hour mode AM/PM not supported) */
+  static fromString(str) {
+    const m = str.match(/^(\d+):(\d+)$/);
+    if (m === null) {
+      throw `Can not construct TimeOfDay from string '${str}'`;
+    }
+    return new TimeOfDay(Number.parseInt(m[1]), Number.parseInt(m[2]));
+  }
+
+  _initialize(hours, minutes) {
+    this._minutes = 60 * hours + minutes;
+    if (this._minutes < 0 || this._minutes >= 60 * 24) {
+      throw `Can not construct TimeOfDay with time outside of 00:00-23:59; ` +
+            `minutes = ${this._minutes}`;
+    }
+  }
+}

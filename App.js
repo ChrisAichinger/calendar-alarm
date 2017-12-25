@@ -6,23 +6,25 @@ import {
   Button,
   Alert,
   Switch,
-  TextInput
+  TextInput,
+  ScrollView,
+  TimePickerAndroid
 } from 'react-native';
 
-import AlarmCreator from './alarm-creator';
+import checkCalendarAndCreateAlarm from './alarm-creator';
 import CalendarMultiSelect from './calendar-multi-select';
 import DailyBackgroundJob from './daily-background-job';
 import Preferences from './preferences';
-import { intToText } from './util';
+import SettingsEntry from './settings-entry';
+import { intToText, TimeOfDay } from './util';
 
 
 const JOB_SCHEDULED_HOUR = 2;
 const JOB_SCHEDULED_MINUTE = 0;
 
-const ALARM_CREATOR = new AlarmCreator();
 const DAILY_BG_JOB_KEY = "ALARM_CREATOR_JOB";
 const DAILY_BG_JOB = new DailyBackgroundJob(DAILY_BG_JOB_KEY);
-DAILY_BG_JOB.register(ALARM_CREATOR.checkCalendarAndCreateAlarm);
+DAILY_BG_JOB.register(checkCalendarAndCreateAlarm);
 
 
 export default class App extends Component<{}> {
@@ -32,6 +34,8 @@ export default class App extends Component<{}> {
       enabled: true,
       preAlarmMinutes: 45,
       selectedCalendars: [],
+      earliestEventStartTODMinutes: new TimeOfDay(4, 0).toTotalMinutes(),
+      latestEventStartTODMinutes: new TimeOfDay(9, 30).toTotalMinutes(),
     };
     Preferences.load('config')
       .then((data) => { this.setState(data); })
@@ -60,9 +64,11 @@ export default class App extends Component<{}> {
   }
 
   _onRunBackgroundPress() {
-    DAILY_BG_JOB.runIfScheduled(() => {
-      new AlarmCreator().checkCalendarAndCreateAlarm();
-    });
+    DAILY_BG_JOB.runIfScheduled(checkCalendarAndCreateAlarm);
+  }
+
+  _onRunAlarmCreatorPress() {
+    checkCalendarAndCreateAlarm();
   }
 
   _onClearPreferencesPress() {
@@ -72,6 +78,29 @@ export default class App extends Component<{}> {
   _onPreAlarmChanged(text) {
     const filteredText = text.replace(/[^0-9]/g, '').substr(0, 5);
     this.setState({preAlarmMinutes: Number.parseInt(filteredText)});
+  }
+
+  _updateStateUsingTimepicker(key) {
+    TimePickerAndroid.open(TimeOfDay.fromTotalMinutes(this.state[key]).toObject())
+      .then(({action, hour, minute}) => {
+        if (action !== TimePickerAndroid.dismissedAction) {
+          this.setState({[key]: new TimeOfDay(hour, minute).toTotalMinutes()});
+        }
+      });
+  }
+
+  _onEarliestStartPress() {
+    this._updateStateUsingTimepicker('earliestEventStartTODMinutes');
+  }
+
+  _onLatestStartPress() {
+    this._updateStateUsingTimepicker('latestEventStartTODMinutes');
+  }
+
+  _formatTime(totalMinutes) {
+    return TimeOfDay
+      .fromTotalMinutes(totalMinutes)
+      .toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
   }
 
   _validateStateOk() {
@@ -90,7 +119,7 @@ export default class App extends Component<{}> {
 
   render() {
     return (
-      <View style={styles.container}>
+      <ScrollView style={styles.container}>
         <Text style={styles.welcome}>
           Setup Calendar Alarm
         </Text>
@@ -113,6 +142,16 @@ export default class App extends Component<{}> {
           onChangeText = {text => this._onPreAlarmChanged(text)}
           value={intToText(this.state.preAlarmMinutes)}
         />
+        <SettingsEntry
+          title="Earliest event start time"
+          value={this._formatTime(this.state.earliestEventStartTODMinutes)}
+          onPress={() => this._onEarliestStartPress()}
+        />
+        <SettingsEntry
+          title="Latest event start time"
+          value={this._formatTime(this.state.latestEventStartTODMinutes)}
+          onPress={() => this._onLatestStartPress()}
+        />
         <Text style={styles.heading}>
           Activated calendars
         </Text>
@@ -125,17 +164,20 @@ export default class App extends Component<{}> {
           accessibilityLabel="Save settings and enable/disable the alarms"
           onPress={() => this._onSavePress()}
         />
-        <View style={styles.debugcontainer}>
-          <Button
-            title="Run bg job"
-            onPress={() => this._onRunBackgroundPress()}
-          />
-          <Button
-            title="Clear prefs"
-            onPress={() => this._onClearPreferencesPress()}
-          />
-        </View>
-      </View>
+        <Button
+          title="Run bg job"
+          onPress={() => this._onRunBackgroundPress()}
+        />
+        <Button
+          title="Run alarm creator"
+          onPress={() => this._onRunAlarmCreatorPress()}
+        />
+        <Button
+          title="Clear prefs"
+          onPress={() => this._onClearPreferencesPress()}
+        />
+        <Text></Text>
+      </ScrollView>
     );
   }
 }
@@ -143,10 +185,11 @@ export default class App extends Component<{}> {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'flex-start',
-    alignItems: 'stretch',
+//    justifyContent: 'flex-start',
+//    alignItems: 'stretch',
     backgroundColor: '#F5FCFF',
     padding: 10,
+    paddingBottom: 20,
   },
   debugcontainer: {
     flexDirection: 'row',
