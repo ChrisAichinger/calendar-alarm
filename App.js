@@ -1,21 +1,21 @@
 import React, { Component } from 'react';
 import {
-  StyleSheet,
-  Text,
-  View,
-  Button,
   Alert,
-  Switch,
-  TextInput,
+  Button,
   ScrollView,
-  TimePickerAndroid
+  Text,
+  TimePickerAndroid,
+  View,
 } from 'react-native';
+
+import Prompt from 'rn-prompt';
 
 import checkCalendarAndCreateAlarm from './alarm-creator';
 import CalendarMultiSelect from './calendar-multi-select';
 import DailyBackgroundJob from './daily-background-job';
 import Preferences from './preferences';
-import SettingsEntry from './settings-entry';
+import { TextSetting, SwitchSetting } from './settings-entry';
+import { appStyles as styles } from './style';
 import { intToText, TimeOfDay } from './util';
 
 
@@ -31,6 +31,7 @@ export default class App extends Component<{}> {
   constructor(props) {
     super(props);
     this.state = {
+      debug: __DEV__,
       enabled: true,
       preAlarmMinutes: 45,
       selectedCalendars: [],
@@ -75,9 +76,18 @@ export default class App extends Component<{}> {
     Preferences.clear();
   }
 
-  _onPreAlarmChanged(text) {
+  _onPreAlarmSubmitted(text) {
     const filteredText = text.replace(/[^0-9]/g, '').substr(0, 5);
-    this.setState({preAlarmMinutes: Number.parseInt(filteredText)});
+
+    /* Activate debug mode by entering 5555 as pre-alarm duration. */
+    if (filteredText == '5555') {
+      this.setState({debug: true, promptVisible: false});
+    } else {
+      this.setState({
+        promptVisible: false,
+        preAlarmMinutes: Number.parseInt(filteredText),
+      });
+    }
   }
 
   _updateStateUsingTimepicker(key) {
@@ -97,10 +107,34 @@ export default class App extends Component<{}> {
     this._updateStateUsingTimepicker('latestEventStartTODMinutes');
   }
 
+  _onDeactivateDebugPress() {
+    this.setState({debug: false});
+  }
+
   _formatTime(totalMinutes) {
     return TimeOfDay
       .fromTotalMinutes(totalMinutes)
-      .toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      .toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+      .replace(/(\d+:\d+):00/, '$1');
+  }
+
+  _formatTimeDuration(totalMinutes) {
+    const format = (value, unit) => {
+      const s = (value == 1 ? '' : 's');
+      return `${value} ${unit}${s}`;
+    }
+
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    let result = [];
+    if (hours) {
+      result.push(format(hours, 'hour'));
+    }
+    if (minutes || !hours) {
+      result.push(format(minutes, 'minute'));
+    }
+    return result.join(' ');
   }
 
   _validateStateOk() {
@@ -112,60 +146,22 @@ export default class App extends Component<{}> {
       return [false, "Please enter an alarm time."];
     }
     if (this.state.selectedCalendars.length == 0) {
-      return [false, "Please select at least one calendar"];
+      return [false, "Please select at least one calendar."];
     }
     return [true, ''];
   }
 
-  render() {
+  _renderDebug() {
+    if (!this.state.debug) {
+      return;
+    }
+
     return (
-      <ScrollView style={styles.container}>
-        <Text style={styles.welcome}>
-          Setup Calendar Alarm
-        </Text>
-        <View style={styles.settingsItem}>
-          <Text style={styles.heading}>
-            Calendar Alarm enabled
-          </Text>
-          <Switch
-            onValueChange={value => this.setState({enabled: value})}
-            value={this.state.enabled}
-          />
-        </View>
-        <Text style={styles.heading}>
-          Set alarm X minutes before first appointment
-        </Text>
-        <TextInput
-          style={styles.textinput}
-          placeholder="Enter pre-alarm duration (min)"
-          keyboardType = 'numeric'
-          onChangeText = {text => this._onPreAlarmChanged(text)}
-          value={intToText(this.state.preAlarmMinutes)}
-        />
-        <SettingsEntry
-          title="Earliest event start time"
-          value={this._formatTime(this.state.earliestEventStartTODMinutes)}
-          onPress={() => this._onEarliestStartPress()}
-        />
-        <SettingsEntry
-          title="Latest event start time"
-          value={this._formatTime(this.state.latestEventStartTODMinutes)}
-          onPress={() => this._onLatestStartPress()}
-        />
-        <Text style={styles.heading}>
-          Activated calendars
-        </Text>
-        <CalendarMultiSelect
-          selected={this.state.selectedCalendars}
-          onSelectionChange={sel => this.setState({selectedCalendars: sel})}
-        />
+      <View>
+        <View style={styles.spacer}></View>
+        <Text style={styles.headingText}>Debug Helpers</Text>
         <Button
-          title="Save"
-          accessibilityLabel="Save settings and enable/disable the alarms"
-          onPress={() => this._onSavePress()}
-        />
-        <Button
-          title="Run bg job"
+          title="Run background job now"
           onPress={() => this._onRunBackgroundPress()}
         />
         <Button
@@ -173,52 +169,93 @@ export default class App extends Component<{}> {
           onPress={() => this._onRunAlarmCreatorPress()}
         />
         <Button
-          title="Clear prefs"
+          title="Clear all preferences"
           onPress={() => this._onClearPreferencesPress()}
         />
-        <Text></Text>
-      </ScrollView>
+        <Button
+          title="Deactivate debug mode"
+          onPress={() => this._onDeactivateDebugPress()}
+        />
+      </View>
+    );
+  }
+
+  render() {
+    return (
+      <View style={styles.outerContainer}>
+        <ScrollView style={styles.contentContainer}>
+          <Text style={styles.headingText}>
+            Calendar Alarm
+          </Text>
+          <Text style={styles.descriptionText}>
+            Automatically schedules an alarm
+            {' '}{this._formatTimeDuration(this.state.preAlarmMinutes)}{' '}
+            before your first appointment of the day.
+          </Text>
+          <SwitchSetting
+            title="Calendar Alarm enabled"
+            value={this.state.enabled}
+            onPress={(id, value) => this.setState({enabled: value})}
+            style={styles.enabledSetting}
+            titleStyle={styles.settingsTitle}
+            extraTextStyle={styles.settingsExtraText}
+          />
+          <TextSetting
+            title="Alarm time before first appointment"
+            value={this._formatTimeDuration(this.state.preAlarmMinutes)}
+            onPress={() => this.setState({promptVisible: true})}
+            titleStyle={styles.settingsTitle}
+            valueStyle={styles.settingsValue}
+          />
+          <TextSetting
+            title="Earliest relevant appointment"
+            value={this._formatTime(this.state.earliestEventStartTODMinutes)}
+            onPress={() => this._onEarliestStartPress()}
+            titleStyle={styles.settingsTitle}
+            valueStyle={styles.settingsValue}
+          />
+          <TextSetting
+            title="Latest relevant appointment"
+            value={this._formatTime(this.state.latestEventStartTODMinutes)}
+            onPress={() => this._onLatestStartPress()}
+            titleStyle={styles.settingsTitle}
+            valueStyle={styles.settingsValue}
+          />
+          <CalendarMultiSelect
+            title="Activated calendars"
+            selected={this.state.selectedCalendars}
+            onSelectionsChange={sel => this.setState({selectedCalendars: sel})}
+            style={styles.calendarContainer}
+            titleStyle={styles.settingsTitle}
+            errorStyle={styles.error}
+            listStyle={styles.calendarList}
+            itemStyle={styles.calendarEntryContainer}
+            itemTitleStyle={styles.calendarEntryTitle}
+            itemExtraTextStyle={styles.calendarEntrySource}
+          />
+          <View style={styles.spacer}></View>
+          <Button
+            title="Save"
+            accessibilityLabel="Save settings and enable/disable the alarms"
+            onPress={() => this._onSavePress()}
+          />
+          {this._renderDebug()}
+          <View style={styles.spacer}></View>
+          <View style={styles.spacer}></View>
+        </ScrollView>
+        <Prompt
+            title="Alarm time before first appointment (min)"
+            placeholder=""
+            defaultValue={intToText(this.state.preAlarmMinutes)}
+            textInputProps={{keyboardType: 'numeric'}}
+            visible={this.state.promptVisible}
+            onCancel={() => this.setState({promptVisible: false})}
+            onSubmit={ (value) => {
+               this._onPreAlarmSubmitted(value);
+              }
+            }
+        />
+      </View>
     );
   }
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-//    justifyContent: 'flex-start',
-//    alignItems: 'stretch',
-    backgroundColor: '#F5FCFF',
-    padding: 10,
-    paddingBottom: 20,
-  },
-  debugcontainer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'stretch',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  welcome: {
-    fontSize: 20,
-    textAlign: 'center',
-    margin: 10,
-  },
-  heading: {
-    textAlign: 'left',
-    fontSize: 15,
-    fontWeight: 'bold',
-    marginTop: 10,
-    marginBottom: 5,
-  },
-  settingsItem: {
-    flexDirection: 'row',
-    alignSelf: 'stretch',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#F5FCFF',
-  },
-  textinput: {
-    height: 40,
-    textAlign: 'right',
-  },
-});

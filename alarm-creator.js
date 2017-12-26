@@ -39,7 +39,7 @@ export class AlarmCreator {
     return events.filter(ev => {
       return !ev.allDay &&
              ev.startDate >= this.earliestEventStart &&
-             ev.startDate < this.latestEventStart;
+             ev.startDate <= this.latestEventStart;
     });
   }
 
