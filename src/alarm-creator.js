@@ -2,7 +2,7 @@ import {NativeModules} from 'react-native';
 import RNCalendarEvents from 'react-native-calendar-events';
 
 import Preferences from './preferences';
-import { todayMidnightRelativeTime, TimeOfDay } from './util';
+import { todayMidnightRelativeTime, TimeOfDay, formatTime } from './util';
 
 
 export class AlarmCreator {
@@ -68,7 +68,8 @@ export class AlarmCreator {
       return;
     }
 
-    const title = `CalAlarm: ${event.title}`;
+    const eventStart = formatTime(TimeOfDay.fromDate(event.startDate));
+    const title = `[${eventStart}] ${event.title} (Calendar Alarm)`;
     NativeModules.AlarmClock.schedule(title,
                                       alarmDate.getHours(),
                                       alarmDate.getMinutes());

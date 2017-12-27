@@ -4,12 +4,49 @@ export function todayMidnightRelativeTime(hours, minutes) {
   return d;
 }
 
+
 export function intToText(number) {
   if (Number.isNaN(number)) {
     return '';
   }
   return number.toString();
 }
+
+
+/** Format time according to the user's locale
+ *
+ * Time can be represented either as TimeOfDay object or as total minutes since
+ * midnight.
+ */
+export function formatTime(time) {
+  if (!(time instanceof TimeOfDay)) {
+    time = TimeOfDay.fromTotalMinutes(time)
+  }
+
+  const options = {hour: '2-digit', minute:'2-digit'};
+  return time.toLocaleTimeString([], options).replace(/(\d+:\d+):00/, '$1');
+}
+
+
+export function formatTimeDuration(totalMinutes) {
+  const format = (value, unit) => {
+    const s = (value == 1 ? '' : 's');
+    return `${value} ${unit}${s}`;
+  }
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  let result = [];
+  if (hours) {
+    result.push(format(hours, 'hour'));
+  }
+  if (minutes || !hours) {
+    result.push(format(minutes, 'minute'));
+  }
+  return result.join(' ');
+}
+
 
 /** Represents a time of day with minute precision
  *
@@ -70,6 +107,11 @@ export class TimeOfDay {
       throw `Can not construct TimeOfDay from string '${str}'`;
     }
     return new TimeOfDay(Number.parseInt(m[1]), Number.parseInt(m[2]));
+  }
+
+  /** Create from a Date object */
+  static fromDate(date) {
+    return new TimeOfDay(date.getHours(), date.getMinutes());
   }
 
   _initialize(hours, minutes) {

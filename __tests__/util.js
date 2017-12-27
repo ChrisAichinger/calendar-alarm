@@ -62,3 +62,8 @@ it('has working toDate()', () => {
     .toEqual(new Date(2017, 3, 14, 2, 15, 0, 0));
 });
 
+it('has working fromDate()', () => {
+  expect(TimeOfDay.fromDate(new Date(2017, 3, 14, 21, 30, 3, 8))._minutes)
+    .toEqual(21*60 + 30);
+});
+

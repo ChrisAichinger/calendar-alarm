@@ -16,7 +16,7 @@ import DailyBackgroundJob from './daily-background-job';
 import Preferences from './preferences';
 import { TextSetting, SwitchSetting } from './settings-entry';
 import { appStyles as styles } from './style';
-import { intToText, TimeOfDay } from './util';
+import { intToText, TimeOfDay, formatTime, formatTimeDuration } from './util';
 
 
 const JOB_SCHEDULED_HOUR = 2;
@@ -91,7 +91,8 @@ export default class App extends Component<{}> {
   }
 
   _updateStateUsingTimepicker(key) {
-    TimePickerAndroid.open(TimeOfDay.fromTotalMinutes(this.state[key]).toObject())
+    TimePickerAndroid
+      .open(TimeOfDay.fromTotalMinutes(this.state[key]).toObject())
       .then(({action, hour, minute}) => {
         if (action !== TimePickerAndroid.dismissedAction) {
           this.setState({[key]: new TimeOfDay(hour, minute).toTotalMinutes()});
@@ -109,32 +110,6 @@ export default class App extends Component<{}> {
 
   _onDeactivateDebugPress() {
     this.setState({debug: false});
-  }
-
-  _formatTime(totalMinutes) {
-    return TimeOfDay
-      .fromTotalMinutes(totalMinutes)
-      .toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
-      .replace(/(\d+:\d+):00/, '$1');
-  }
-
-  _formatTimeDuration(totalMinutes) {
-    const format = (value, unit) => {
-      const s = (value == 1 ? '' : 's');
-      return `${value} ${unit}${s}`;
-    }
-
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-
-    let result = [];
-    if (hours) {
-      result.push(format(hours, 'hour'));
-    }
-    if (minutes || !hours) {
-      result.push(format(minutes, 'minute'));
-    }
-    return result.join(' ');
   }
 
   _validateStateOk() {
@@ -189,7 +164,7 @@ export default class App extends Component<{}> {
           </Text>
           <Text style={styles.descriptionText}>
             Automatically schedules an alarm
-            {' '}{this._formatTimeDuration(this.state.preAlarmMinutes)}{' '}
+            {' '}{formatTimeDuration(this.state.preAlarmMinutes)}{' '}
             before your first appointment of the day.
           </Text>
           <SwitchSetting
@@ -202,21 +177,21 @@ export default class App extends Component<{}> {
           />
           <TextSetting
             title="Alarm time before first appointment"
-            value={this._formatTimeDuration(this.state.preAlarmMinutes)}
+            value={formatTimeDuration(this.state.preAlarmMinutes)}
             onPress={() => this.setState({promptVisible: true})}
             titleStyle={styles.settingsTitle}
             valueStyle={styles.settingsValue}
           />
           <TextSetting
             title="Earliest relevant appointment"
-            value={this._formatTime(this.state.earliestEventStartTODMinutes)}
+            value={formatTime(this.state.earliestEventStartTODMinutes)}
             onPress={() => this._onEarliestStartPress()}
             titleStyle={styles.settingsTitle}
             valueStyle={styles.settingsValue}
           />
           <TextSetting
             title="Latest relevant appointment"
-            value={this._formatTime(this.state.latestEventStartTODMinutes)}
+            value={formatTime(this.state.latestEventStartTODMinutes)}
             onPress={() => this._onLatestStartPress()}
             titleStyle={styles.settingsTitle}
             valueStyle={styles.settingsValue}
