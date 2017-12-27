@@ -1,4 +1,4 @@
-import { TimeOfDay } from '../util';
+import { TimeOfDay } from '../src/util';
 
 it('constructs from "1:00"', () => {
   expect(TimeOfDay.fromString("1:00")._minutes).toEqual(60);
