@@ -123,6 +123,12 @@ export default class App extends Component<{}> {
     if (this.state.selectedCalendars.length == 0) {
       return [false, "Please select at least one calendar."];
     }
+    if (this.state.earliestEventStartTODMinutes >=
+        this.state.latestEventStartTODMinutes)
+    {
+      return [false, "Earliest relevant appointment must be before " +
+                     "latest relevant appointment."];
+    }
     return [true, ''];
   }
 
