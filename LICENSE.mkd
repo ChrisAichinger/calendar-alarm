@@ -1,0 +1,6 @@
+Copyright (c) 2016 Christian Aichinger <Greek0@gmx.net>
+All rights reserved.
+
+The main application logos under android/app/src/main/res/mipmap-*/ic_launcher.png are derived works of:
+
+* icons from materialdesignicons.com, which were originally licensed under Apache v2.
