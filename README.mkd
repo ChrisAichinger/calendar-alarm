@@ -1,0 +1,13 @@
+# Calendar Alarm
+
+A React Native Android app that schedules an alarm a configurable time before the first calendar event on the next day.
+
+Main screen:
+
+<img src="img/CalendarAlarm.png" width="350" />
+
+Scheduled alarm:
+
+<img src="img/ScheduledAlarm.png" width="350" />
+
+Get the APK from the [Play Store](https://play.google.com/store/apps/details?id=com.calendaralarm).
